@@ -55,8 +55,8 @@ import { AskService } from '../../services/ask.service';
                   </div>
                 } @else if (error()) {
                   <p class="text-red-600">{{ error() }}</p>
-                } @else if (answer(); as ans) {
-                  <p class="whitespace-pre-wrap leading-relaxed text-[#2d2a26]">{{ ans }}</p>
+                } @else if (answer()) {
+                  <p class="whitespace-pre-wrap leading-relaxed text-[#2d2a26]">{{ answer() }}</p>
                 }
               </div>
             </div>
