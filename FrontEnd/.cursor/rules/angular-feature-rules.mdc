@@ -1,0 +1,100 @@
+---
+description: Angular feature-based CRUD and auth structure; services, standalone components, Signals; Tailwind CSS for styling
+globs: src/app/**/*.ts
+alwaysApply: true
+---
+
+# Generic Angular Feature Rules
+
+## Architecture: Feature-Based Structure
+
+### CRUD Entities
+When creating a new domain entity (e.g., `{Entity}`):
+
+- **Path**: `src/app/components/{entity}/`
+- **Sub-folders**:
+  - `list/`: Grid/table view for the collection.
+  - `form/`: Input handling for Create/Update actions.
+  - `detail/`: Read-only view for a single record.
+- **Service**: `src/app/services/{entity}.service.ts`
+
+### Auth / Non-CRUD Features
+For auth, login, or features without list/detail:
+
+- **Path**: `src/app/components/{feature}/`
+- **Sub-folders**: Use `form/` when the feature is form-driven (e.g., login).
+- **Service**: `src/app/services/{feature}.service.ts` (e.g. `auth.service.ts`).
+
+## Implementation Details
+
+- **Services**:
+  - Handle all HTTP and state logic.
+  - Use **Signals** for state when on Angular 16+.
+  - Keep components free of HTTP and complex state.
+
+- **Components**:
+  - Use **standalone** components.
+  - Prefer `@Input()` and `@Output()` for `detail` and `form` to keep them **presentational** where possible.
+
+- **Conventions**:
+  - One feature per folder under `components/`.
+  - One service per domain/feature under `services/`.
+
+### Delete / destructive confirmation
+
+- **Always use the shared delete confirmation popup** (`src/app/components/shared/delete-confirm-modal/`) for any delete or destructive action. Do not use the browser `confirm()` or custom one-off modals.
+- This keeps the UI consistent and ensures the confirmation button uses the theme (primary) color. Use `DeleteConfirmModalComponent` with `[open]`, `[message]` (optional; default: "Are you sure to confirm this data?"), `(confirmed)`, and `(cancelled)`.
+
+### Common Services (`src/app/services/common/`)
+
+- **Location**: All shared/utility services live in `src/app/services/common/`:
+  - `api.service.ts` — HTTP (get, post, put, delete), `apiUrl`
+  - `common.service.ts` — `isNull`, `isNotNull`, `orElse`, `getErrorMessage`, `parseJson`
+  - `string.service.ts` — `trim`, `trimToEmpty`, `isBlank`, `isNonBlank`, `toString`
+  - `number.service.ts` — `parseInt`, `parseIntOrNull`, `parseFloat`, `isValidInt`
+  - `date.service.ts` — `formatDisplayDate(value)` for displaying dates (e.g. in grids, detail, modals)
+- **Before creating any new functionality**: Check whether a common method already exists. If it does, use it instead of duplicating logic.
+- **When adding common logic**: Do not change existing common method implementations. Add new methods to the appropriate service in `common/` and use them in components; do not duplicate the same logic inline.
+
+### Dates (display)
+
+- **Use DateService** (`src/app/services/common/date.service.ts`) for all date display in the app. Call `formatDisplayDate(value)` where `value` is `string | Date | null | undefined`; it returns a consistent format (e.g. `Jun/04/2025` — short month, 2-digit day, 4-digit year) or empty string for null/invalid.
+- **In AG Grid columns**: Use a `valueFormatter` that returns `params.value != null ? this.dateService.formatDisplayDate(params.value) : '—'` (inject `DateService` in the list component).
+- **In templates** (detail, modal, etc.): Use `{{ dateService.formatDisplayDate(entity().someDate) }}`. Do not use the Angular `date` pipe or raw date strings so that all dates share the same format.
+
+## Data grids (AG Grid)
+
+- **Use ag-grid-angular** for list/table views (e.g. entity list pages). All grids must share the **same theme and style**.
+- **Theme**: Use the built-in Theming API with **themeMaterial** from `ag-grid-community`:
+  - In the list component: `import { themeMaterial, type ColDef } from 'ag-grid-community';` and expose `readonly theme = themeMaterial;`
+  - In the template: bind the theme on the grid: `<ag-grid-angular [theme]="theme" ... />`
+- **Do not** use legacy CSS themes (e.g. `ag-theme-alpine`, `ag-theme-balham`) or import `ag-grid-community/styles/ag-grid.css` / `ag-theme-*.css` when using the `[theme]` property; the Theming API applies the theme.
+- **Conventions** (for a consistent look across all grids):
+  - Set `floatingFilter: false` on columns (and in `defaultColDef`) for a clean table without filter inputs under headers; filtering remains available via the column menu.
+  - Use the shared action link classes for row actions: `link-action-view`, `link-action-edit`, `link-action-delete` (see `src/styles.css`).
+  - Provide a quick-filter search input above the grid and bind `[quickFilterText]` so users can search across columns.
+  - Place the quick-filter search input and the primary action button (e.g. "Add …") on the **right side** of the toolbar: use `flex flex-wrap items-center justify-end gap-2` (or `sm:flex-row sm:justify-end`) so the search bar and button align to the right for a consistent list layout across the app.
+- **Cell renderer components** used only in `columnDefs` (e.g. actions cell): add a hidden reference in the template so the Angular compiler sees the use, e.g. `@if (false) { <app-...-actions-cell /> }`, so the "not used in template" warning is avoided.
+- **Grid wrapper**: Use a consistent container (e.g. `rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden`) and a fixed height (e.g. `height: 420px`) so all list pages look the same.
+- **Columns that show a related entity (e.g. Company)**: When the row has only a foreign key (e.g. `companyId`) and quick filter should search by the related name, add a string property (e.g. `companyName`) to the row data before binding to the grid. Compute row data from the list plus a lookup (e.g. companies); set the name on each row; bind the column `field` to that string (e.g. `companyName`) so display and quick filter use the text. Use a computed signal that maps `items()` with the lookup so the grid receives `rowData()` with the string property set.
+
+## Styling: Tailwind CSS
+
+- **Use Tailwind utility classes** for all layout, spacing, typography, colors, borders, and responsive behavior. Avoid custom CSS in component `styleUrl` / `styles` unless necessary.
+- **Where to put classes**: In the component template (HTML). Prefer a single `class` with space‑separated utilities; use `[ngClass]` or `[class.x]` only when classes depend on component state.
+- **Design tokens**: Prefer Tailwind's palette (e.g. `slate-*`, `gray-*`, `blue-*`) and spacing scale. Use semantic tokens like `text-slate-700`, `bg-slate-100`, `ring-blue-500` for consistency.
+- **When to keep component CSS**: Use a component stylesheet only for `:host`, `::ng-deep` (sparingly), or styles that cannot be expressed with Tailwind (e.g. complex `grid-template-areas` or third‑party overrides). Prefer `@apply` in that file only if it significantly reduces repetition; otherwise use raw CSS for the exception.
+- **Forms and focus**: Use Tailwind form and focus utilities (`focus:ring-2`, `focus:ring-blue-500`, `border-gray-300`, `rounded-md`, etc.) for inputs and buttons.
+- **Responsive and dark**: Use `sm:`, `md:`, `lg:` and `dark:` prefixes when the design requires it. Prefer mobile‑first.
+- **No extra CSS files**: Omit `styleUrl` / `styleUrls` when the component is fully styled with Tailwind. Remove or empty unused `.component.css` files.
+
+## Dropdowns (selects)
+
+- **Use the shared searchable select** (`src/app/components/shared/searchable-select/`) for all dropdown/select inputs so they are **searchable** and **Tailwind-native** (no third-party select library).
+- Do not use native `<select>` for entity or option lists; use `<app-searchable-select>` with `[items]`, `bindLabel`, `bindValue`, and `placeholder`. It supports `formControlName` and `ngModel`.
+- Import `SearchableSelectComponent` in the standalone component's `imports` array.
+- **Setting the value when options load async**: The control value is often a number (e.g. `companyId`); the label (e.g. company name) comes from `[items]`. To avoid showing a raw id or empty label, **load the options (items) before patching the form** with the value. For example: in edit mode, call the options API first (e.g. `getList()` for companies); in the `next` callback set the options (e.g. `companies.set(res.items)`), then load the entity and `patchValue({ companyId: entity.companyId })`. That way when the searchable select receives the value, `[items]` is already set and it can resolve and display the label.
+
+## Navigation / Sidebar
+
+- **Menu items**: Every sidebar or navigation menu link must include an icon together with the label (e.g. SVG icon before the text). Do not add menu items without an accompanying icon; use consistent icon size and styling (e.g. `w-5 h-5 shrink-0` for inline SVGs).

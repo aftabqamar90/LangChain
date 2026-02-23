@@ -1,1 +1,6 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+/* Claude-style app: warm neutral background */
+body {
+  background-color: #f5f0e8;
+}

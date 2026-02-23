@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -15,9 +16,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --- CONFIGURATION ---
 # You can use any model available on OpenRouter (e.g., "meta-llama/llama-3-8b-instruct")
-OPENROUTER_MODEL = "nvidia/nemotron-nano-9b-v2:free" 
+OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct" 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # --- SCHEMAS ---
