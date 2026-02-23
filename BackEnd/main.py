@@ -17,7 +17,7 @@ app = FastAPI(
 
 # --- CONFIGURATION ---
 # You can use any model available on OpenRouter (e.g., "meta-llama/llama-3-8b-instruct")
-OPENROUTER_MODEL = "mistralai/mistral-7b-instruct:free" 
+OPENROUTER_MODEL = "nvidia/nemotron-nano-9b-v2:free" 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # --- SCHEMAS ---
