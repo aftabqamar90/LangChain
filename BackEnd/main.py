@@ -50,20 +50,24 @@ def get_llm(model_name: str):
     )
 
 # --- ROUTES ---
-@app.post("/ask", response_model=QueryResponse)
+@app.post("/ask")
 async def ask_ai(request: QueryRequest):
-    """
-    Connects to OpenRouter to get an AI-generated explanation.
-    """
-    target_model = request.model_override or OPENROUTER_MODEL
-    llm = get_llm(target_model)
     
-    prompt = ChatPromptTemplate.from_template("Explain {topic} like I am five years old.")
-    chain = prompt | llm | StrOutputParser()
+    # Use default model if no override is provided
+    model_name = request.model_override or OPENROUTER_MODEL
     
-    response = await chain.ainvoke({"topic": request.topic})
+    # Get LLM instance
+    llm = get_llm(model_name)
+    
+    # Simple prompt
+    prompt = f"Explain {request.topic} like I am five years old."
+    
+    # Call model
+    response = await llm.ainvoke(prompt)
+    
+    # Return result
     return {"answer": response}
-
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
